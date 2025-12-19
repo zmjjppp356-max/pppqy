@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Firebase 图片上传（静态网站）</title>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 30px;
+      }
+      .upload-box {
+        border: 2px dashed #aaa;
+        padding: 20px;
+        width: 320px;
+        text-align: center;
+      }
+      #gallery img {
+        width: 150px;
+        margin: 10px;
+        border-radius: 6px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Firebase Storage 图片上传</h2>
+
+    <div class="upload-box">
+      <input type="file" id="fileInput" multiple accept="image/*" />
+      <p>选择图片后自动上传</p>
+    </div>
+
+    <h3>已上传图片</h3>
+    <div id="gallery"></div>
+
+    <script>
+      /* ✅ 1. Firebase 配置（storageBucket 已修正） */
+      const firebaseConfig = {
+        apiKey: "AIzaSyD8YicJbBiAgk8YNxE2Nl_e4OrmRG2-tJ8",
+        authDomain: "pictures-8e712.firebaseapp.com",
+        projectId: "pictures-8e712",
+        storageBucket: "pictures-8e712.appspot.com", // ✅ 关键修正
+        messagingSenderId: "422349091954",
+        appId: "1:422349091954:web:fc0c7b9e6c5346b1f1beeb",
+      };
+
+      /* 2. 初始化 Firebase */
+      firebase.initializeApp(firebaseConfig);
+      const storage = firebase.storage();
+
+      const input = document.getElementById("fileInput");
+      const gallery = document.getElementById("gallery");
+
+      /* 3. 选择文件 → 上传 */
+      input.addEventListener("change", () => {
+        const files = [...input.files];
+
+        files.forEach((file) => {
+          const fileRef = storage.ref(
+            "images/" + Date.now() + "_" + file.name
+          );
+
+          fileRef
+            .put(file)
+            .then(() => fileRef.getDownloadURL())
+            .then((url) => {
+              showImage(url);
+              saveImage(url);
+            })
+            .catch((err) => {
+              alert("上传失败：" + err.message);
+              console.error(err);
+            });
+        });
+      });
+
+      /* 4. 显示图片 */
+      function showImage(url) {
+        const img = document.createElement("img");
+        img.src = url;
+        gallery.appendChild(img);
+      }
+
+      /* 5. 本地保存 URL（刷新不丢） */
+      function saveImage(url) {
+        const images = JSON.parse(localStorage.getItem("images") || "[]");
+        images.push(url);
+        localStorage.setItem("images", JSON.stringify(images));
+      }
+
+      /* 6. 页面加载恢复 */
+      window.onload = () => {
+        const images = JSON.parse(localStorage.getItem("images") || "[]");
+        images.forEach(showImage);
+      };
+    </script>
+  </body>
+</html>
