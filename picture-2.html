@@ -19,7 +19,7 @@
     .upload-box {
       border: 2px dashed #aaa;
       padding: 30px;
-      width: 400px;
+      width: 420px;
       text-align: center;
       margin-bottom: 30px;
     }
@@ -28,7 +28,7 @@
     }
     .img-item {
       display: inline-block;
-      margin: 10px;
+      margin: 12px;
       text-align: center;
     }
     .img-item img {
@@ -37,10 +37,24 @@
       box-shadow: 0 0 5px rgba(0,0,0,.2);
       display: block;
     }
-    .status {
+    .progress-bar {
+      width: 150px;
+      height: 8px;
+      background: #eee;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .progress-inner {
+      height: 100%;
+      width: 0%;
+      background: #4caf50;
+      transition: width 0.2s;
+    }
+    .percent {
       font-size: 12px;
-      margin-top: 5px;
-      color: #666;
+      margin-top: 4px;
+      color: #333;
     }
   </style>
 </head>
@@ -57,7 +71,7 @@
 <div id="gallery"></div>
 
 <script>
-/* Firebase 配置（你自己的，已修正） */
+/* 🔥 Firebase 配置（你的项目） */
 const firebaseConfig = {
   apiKey: "AIzaSyD8YicJbBiAgk8YNxE2Nl_e4OrmRG2-tJ8",
   authDomain: "pictures-8e712.firebaseapp.com",
@@ -67,6 +81,7 @@ const firebaseConfig = {
   appId: "1:422349091954:web:fc0c7b9e6c5346b1f1beeb"
 };
 
+/* 初始化 Firebase */
 firebase.initializeApp(firebaseConfig);
 const storage = firebase.storage();
 
@@ -80,18 +95,28 @@ input.addEventListener("change", () => {
   });
 });
 
-/* 创建预览 + 上传 */
+/* 创建预览 + 上传 + 进度条 */
 function createPreviewAndUpload(file) {
   const wrapper = document.createElement("div");
   wrapper.className = "img-item";
 
   const img = document.createElement("img");
-  const status = document.createElement("div");
-  status.className = "status";
-  status.innerText = "上传中…";
+
+  const progressBar = document.createElement("div");
+  progressBar.className = "progress-bar";
+
+  const progressInner = document.createElement("div");
+  progressInner.className = "progress-inner";
+
+  progressBar.appendChild(progressInner);
+
+  const percentText = document.createElement("div");
+  percentText.className = "percent";
+  percentText.innerText = "0%";
 
   wrapper.appendChild(img);
-  wrapper.appendChild(status);
+  wrapper.appendChild(progressBar);
+  wrapper.appendChild(percentText);
   gallery.appendChild(wrapper);
 
   /* 本地预览 */
@@ -99,31 +124,41 @@ function createPreviewAndUpload(file) {
   reader.onload = e => img.src = e.target.result;
   reader.readAsDataURL(file);
 
-  /* 上传到 Firebase */
+  /* Firebase 上传并监听进度 */
   const ref = storage.ref("images/" + Date.now() + "_" + file.name);
+  const uploadTask = ref.put(file);
 
-  ref.put(file)
-    .then(() => ref.getDownloadURL())
-    .then(url => {
-      img.src = url;           // 替换为云端图片
-      status.innerText = "已上传";
-      saveImage(url);
-    })
-    .catch(err => {
-      status.innerText = "上传失败";
-      status.style.color = "red";
-      console.error(err);
-    });
+  uploadTask.on(
+    "state_changed",
+    snapshot => {
+      const progress =
+        (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      progressInner.style.width = progress + "%";
+      percentText.innerText = Math.floor(progress) + "%";
+    },
+    error => {
+      percentText.innerText = "上传失败";
+      percentText.style.color = "red";
+      console.error(error);
+    },
+    () => {
+      ref.getDownloadURL().then(url => {
+        img.src = url;               // 切换为云端图片
+        percentText.innerText = "已上传";
+        saveImage(url);
+      });
+    }
+  );
 }
 
-/* 本地保存 URL */
+/* 保存图片 URL（刷新不丢） */
 function saveImage(url) {
   const images = JSON.parse(localStorage.getItem("images") || "[]");
   images.push(url);
   localStorage.setItem("images", JSON.stringify(images));
 }
 
-/* 页面刷新恢复 */
+/* 页面加载恢复 */
 window.onload = () => {
   const images = JSON.parse(localStorage.getItem("images") || "[]");
   images.forEach(url => {
@@ -133,17 +168,15 @@ window.onload = () => {
     const img = document.createElement("img");
     img.src = url;
 
-    const status = document.createElement("div");
-    status.className = "status";
-    status.innerText = "已上传";
+    const percentText = document.createElement("div");
+    percentText.className = "percent";
+    percentText.innerText = "已上传";
 
     wrapper.appendChild(img);
-    wrapper.appendChild(status);
+    wrapper.appendChild(percentText);
     gallery.appendChild(wrapper);
   });
 };
 </script>
-
 </body>
 </html>
-
