@@ -1,103 +1,149 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Firebase 图片上传（静态网站）</title>
+<head>
+  <meta charset="UTF-8" />
+  <title>Firebase Storage 图片上传</title>
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        padding: 30px;
-      }
-      .upload-box {
-        border: 2px dashed #aaa;
-        padding: 20px;
-        width: 320px;
-        text-align: center;
-      }
-      #gallery img {
-        width: 150px;
-        margin: 10px;
-        border-radius: 6px;
-        box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-      }
-    </style>
-  </head>
-  <body>
-    <h2>Firebase Storage 图片上传</h2>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+    }
+    h2 {
+      margin-bottom: 10px;
+    }
+    .upload-box {
+      border: 2px dashed #aaa;
+      padding: 30px;
+      width: 400px;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    #gallery {
+      min-height: 120px;
+    }
+    .img-item {
+      display: inline-block;
+      margin: 10px;
+      text-align: center;
+    }
+    .img-item img {
+      width: 150px;
+      border-radius: 6px;
+      box-shadow: 0 0 5px rgba(0,0,0,.2);
+      display: block;
+    }
+    .status {
+      font-size: 12px;
+      margin-top: 5px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
 
-    <div class="upload-box">
-      <input type="file" id="fileInput" multiple accept="image/*" />
-      <p>选择图片后自动上传</p>
-    </div>
+<h2>Firebase Storage 图片上传</h2>
 
-    <h3>已上传图片</h3>
-    <div id="gallery"></div>
+<div class="upload-box">
+  <input type="file" id="fileInput" multiple accept="image/*">
+  <p>选择图片后自动上传</p>
+</div>
 
-    <script>
-      /* ✅ 1. Firebase 配置（storageBucket 已修正） */
-      const firebaseConfig = {
-        apiKey: "AIzaSyD8YicJbBiAgk8YNxE2Nl_e4OrmRG2-tJ8",
-        authDomain: "pictures-8e712.firebaseapp.com",
-        projectId: "pictures-8e712",
-        storageBucket: "pictures-8e712.appspot.com", // ✅ 关键修正
-        messagingSenderId: "422349091954",
-        appId: "1:422349091954:web:fc0c7b9e6c5346b1f1beeb",
-      };
+<h3>已上传图片</h3>
+<div id="gallery"></div>
 
-      /* 2. 初始化 Firebase */
-      firebase.initializeApp(firebaseConfig);
-      const storage = firebase.storage();
+<script>
+/* Firebase 配置（你自己的，已修正） */
+const firebaseConfig = {
+  apiKey: "AIzaSyD8YicJbBiAgk8YNxE2Nl_e4OrmRG2-tJ8",
+  authDomain: "pictures-8e712.firebaseapp.com",
+  projectId: "pictures-8e712",
+  storageBucket: "pictures-8e712.appspot.com",
+  messagingSenderId: "422349091954",
+  appId: "1:422349091954:web:fc0c7b9e6c5346b1f1beeb"
+};
 
-      const input = document.getElementById("fileInput");
-      const gallery = document.getElementById("gallery");
+firebase.initializeApp(firebaseConfig);
+const storage = firebase.storage();
 
-      /* 3. 选择文件 → 上传 */
-      input.addEventListener("change", () => {
-        const files = [...input.files];
+const input = document.getElementById("fileInput");
+const gallery = document.getElementById("gallery");
 
-        files.forEach((file) => {
-          const fileRef = storage.ref(
-            "images/" + Date.now() + "_" + file.name
-          );
+/* 选择图片 */
+input.addEventListener("change", () => {
+  [...input.files].forEach(file => {
+    createPreviewAndUpload(file);
+  });
+});
 
-          fileRef
-            .put(file)
-            .then(() => fileRef.getDownloadURL())
-            .then((url) => {
-              showImage(url);
-              saveImage(url);
-            })
-            .catch((err) => {
-              alert("上传失败：" + err.message);
-              console.error(err);
-            });
-        });
-      });
+/* 创建预览 + 上传 */
+function createPreviewAndUpload(file) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "img-item";
 
-      /* 4. 显示图片 */
-      function showImage(url) {
-        const img = document.createElement("img");
-        img.src = url;
-        gallery.appendChild(img);
-      }
+  const img = document.createElement("img");
+  const status = document.createElement("div");
+  status.className = "status";
+  status.innerText = "上传中…";
 
-      /* 5. 本地保存 URL（刷新不丢） */
-      function saveImage(url) {
-        const images = JSON.parse(localStorage.getItem("images") || "[]");
-        images.push(url);
-        localStorage.setItem("images", JSON.stringify(images));
-      }
+  wrapper.appendChild(img);
+  wrapper.appendChild(status);
+  gallery.appendChild(wrapper);
 
-      /* 6. 页面加载恢复 */
-      window.onload = () => {
-        const images = JSON.parse(localStorage.getItem("images") || "[]");
-        images.forEach(showImage);
-      };
-    </script>
-  </body>
+  /* 本地预览 */
+  const reader = new FileReader();
+  reader.onload = e => img.src = e.target.result;
+  reader.readAsDataURL(file);
+
+  /* 上传到 Firebase */
+  const ref = storage.ref("images/" + Date.now() + "_" + file.name);
+
+  ref.put(file)
+    .then(() => ref.getDownloadURL())
+    .then(url => {
+      img.src = url;           // 替换为云端图片
+      status.innerText = "已上传";
+      saveImage(url);
+    })
+    .catch(err => {
+      status.innerText = "上传失败";
+      status.style.color = "red";
+      console.error(err);
+    });
+}
+
+/* 本地保存 URL */
+function saveImage(url) {
+  const images = JSON.parse(localStorage.getItem("images") || "[]");
+  images.push(url);
+  localStorage.setItem("images", JSON.stringify(images));
+}
+
+/* 页面刷新恢复 */
+window.onload = () => {
+  const images = JSON.parse(localStorage.getItem("images") || "[]");
+  images.forEach(url => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "img-item";
+
+    const img = document.createElement("img");
+    img.src = url;
+
+    const status = document.createElement("div");
+    status.className = "status";
+    status.innerText = "已上传";
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(status);
+    gallery.appendChild(wrapper);
+  });
+};
+</script>
+
+</body>
 </html>
+
